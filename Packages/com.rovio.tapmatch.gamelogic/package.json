@@ -1,0 +1,9 @@
+{
+  "name": "com.rovio.tapmatch.gamelogic",
+  "version": "1.0.0",
+  "displayName": "Tap Match - Game Logic",
+  "description": "Pure C# game logic for the Tap Match game.",
+  "unity": "6000.4",
+  "author": { "name": "Ali Dashtian" },
+  "type": "library"
+}
