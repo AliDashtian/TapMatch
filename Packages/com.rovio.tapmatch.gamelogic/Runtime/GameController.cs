@@ -11,10 +11,7 @@ namespace TapMatch.GameLogic
     /// </summary>
     public sealed class GameController
     {
-        public enum State { Idle, Processing }
-
         public GridModel Grid { get; }
-        public State CurrentState { get; private set; } = State.Idle;
         public int ColorCount { get; }
 
         private readonly MatchFinder _matchFinder;
@@ -41,7 +38,6 @@ namespace TapMatch.GameLogic
         public void Initialize()
         {
             _filler.FillEntireGrid(Grid, ColorCount);
-            CurrentState = State.Idle;
         }
 
         /// <summary>
@@ -51,15 +47,12 @@ namespace TapMatch.GameLogic
         /// </summary>
         public TapResult TryTap(int row, int col)
         {
-            if (CurrentState != State.Idle) return null;
             if (!Grid.IsInBounds(row, col)) return null;
             if (Grid.IsEmpty(row, col)) return null;
 
             var connected = _matchFinder.FindConnected(Grid, row, col);
 
             if (connected.Count < 2) return null;
-
-            CurrentState = State.Processing;
 
             foreach (var (r, c) in connected)
             {
@@ -68,8 +61,6 @@ namespace TapMatch.GameLogic
 
             var falls = _collapser.Collapse(Grid);
             var spawns = _filler.Fill(Grid, ColorCount);
-
-            CurrentState = State.Idle;
 
             return new TapResult(connected, falls, spawns);
         }
