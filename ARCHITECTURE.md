@@ -228,9 +228,9 @@ All core classes are tested with plain NUnit in the embedded package's `Tests/Ed
 
 ## AI Usage Disclosure
 
-Claude Code (Claude Opus) was used as a coding assistant throughout this project for:
+Claude Code and Gemini were used as a coding assistant throughout this project for:
 - **Architecture planning**: Discussed layer separation, assembly structure, and design patterns
-- **Code review**: Identified edge cases (animation cancellation leaks, VContainer constructor resolution)
-- **Guided implementation**: Provided step-by-step guidance for each component; all code was written by hand
+- **Unit test creation**: Generated comprehensive test suites with deterministic test doubles
+- **Bug fixing**: Helped diagnose VContainer resolution issues (constructor parameter selection)
 
 All code was reviewed, understood, and validated by me. The architectural decisions and design trade-offs reflect my engineering judgment. I can explain and defend every choice in detail during the interview.
