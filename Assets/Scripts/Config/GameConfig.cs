@@ -52,6 +52,16 @@ namespace TapMatch.Runtime.Config
         public float FallDuration => fallDuration;
         public float RemoveDuration => removeDuration;
 
+        private void OnValidate()
+        {
+            if (matchableColors != null && matchableColors.Length != colorCount)
+            {
+                Debug.LogWarning(
+                    $"GameConfig: matchableColors length ({matchableColors.Length}) " +
+                    $"doesn't match colorCount ({colorCount}). They should be equal.");
+            }
+        }
+
         public Color GetColor(int colorId)
         {
             if (colorId < 0 || colorId >= matchableColors.Length)

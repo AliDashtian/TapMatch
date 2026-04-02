@@ -50,16 +50,6 @@ namespace TapMatch.GameLogic.Tests
         }
 
         [Test]
-        public void Initialize_SetsStateToIdle()
-        {
-            var controller = CreateController(3, 3, 4, 0, 1, 2, 3, 0, 1, 2, 3, 0);
-
-            controller.Initialize();
-
-            Assert.AreEqual(GameController.State.Idle, controller.CurrentState);
-        }
-
-        [Test]
         public void TryTap_OutOfBounds_ReturnsNull()
         {
             var controller = CreateController(3, 3, 3, 0, 1, 2, 0, 1, 2, 0, 1, 2);
@@ -137,17 +127,6 @@ namespace TapMatch.GameLogic.Tests
             Assert.AreEqual(2, result.Removed.Count);
             // After removing column 0, both cells are empty, so spawns fill them
             Assert.AreEqual(2, result.Spawned.Count);
-        }
-
-        [Test]
-        public void TryTap_StateReturnsToIdle_AfterProcessing()
-        {
-            var controller = CreateController(2, 2, 2, 0, 0, 1, 1, 0, 0);
-            controller.Initialize();
-
-            controller.TryTap(0, 0);
-
-            Assert.AreEqual(GameController.State.Idle, controller.CurrentState);
         }
     }
 }

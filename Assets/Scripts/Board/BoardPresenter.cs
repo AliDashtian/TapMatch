@@ -1,4 +1,5 @@
-﻿using System.Threading;
+﻿using System;
+using System.Threading;
 using TapMatch.GameLogic;
 using TapMatch.Runtime.Board;
 using TapMatch.Runtime.Config;
@@ -75,15 +76,13 @@ namespace TapMatch.Runtime.Board
 
         private async void HandleTileTapped(int row, int col)
         {
-            // GameController handles state check internally
-            var result = _gameController.TryTap(row, col);
-            if (result == null) return;
-
-            // Block input during animation sequence
-            _inputHandler.SetInputEnabled(false);
-
             try
             {
+                var result = _gameController.TryTap(row, col);
+                if (result == null) return;
+
+                _inputHandler.SetInputEnabled(false);
+
                 var ct = _cts.Token;
 
                 // 1. Remove matched tiles
@@ -94,15 +93,17 @@ namespace TapMatch.Runtime.Board
 
                 // 3. Spawn new tiles and animate them falling in
                 await _boardView.AnimateSpawnsAsync(result, ct);
-            }
-            catch (System.OperationCanceledException)
-            {
-                // Component was disabled/destroyed during animation
-                return;
-            }
 
-            // Re-enable input
-            _inputHandler.SetInputEnabled(true);
+                _inputHandler.SetInputEnabled(true);
+            }
+            catch (OperationCanceledException)
+            {
+                // Expected when the scene is unloaded during animation — safe to ignore
+            }
+            catch (Exception e)
+            {
+                Debug.LogException(e);
+            }
         }
     }
 }
