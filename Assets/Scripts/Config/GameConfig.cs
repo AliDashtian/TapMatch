@@ -1,7 +1,22 @@
+using System;
 using UnityEngine;
 
 namespace TapMatch.Runtime.Config
 {
+    /// <summary>
+    /// Pairs a tint color with an optional sprite for each matchable type.
+    /// When no sprite is assigned, the prefab's default sprite is used.
+    /// </summary>
+    [Serializable]
+    public struct MatchableTypeData
+    {
+        [Tooltip("Tint color applied to the sprite renderer")]
+        public Color color;
+
+        [Tooltip("Optional sprite override — leave empty to use the prefab default")]
+        public Sprite sprite;
+    }
+
     /// <summary>
     /// ScriptableObject holding all configurable game parameters.
     /// Easily tweakable from the Inspector without code changes.
@@ -23,15 +38,15 @@ namespace TapMatch.Runtime.Config
         [Min(2)]
         [SerializeField] private int colorCount = 5;
 
-        [Tooltip("Colors assigned to each color ID (index = color ID)")]
+        [Tooltip("Visual data for each matchable type (index = color ID)")]
         [SerializeField]
-        private Color[] matchableColors = new[]
+        private MatchableTypeData[] matchableTypes = new[]
         {
-            new Color(0.90f, 0.25f, 0.25f), // Red
-            new Color(0.25f, 0.65f, 0.95f), // Blue
-            new Color(0.30f, 0.85f, 0.40f), // Green
-            new Color(0.95f, 0.85f, 0.20f), // Yellow
-            new Color(0.75f, 0.35f, 0.85f), // Purple
+            new MatchableTypeData { color = new Color(0.90f, 0.25f, 0.25f) }, // Red
+            new MatchableTypeData { color = new Color(0.25f, 0.65f, 0.95f) }, // Blue
+            new MatchableTypeData { color = new Color(0.30f, 0.85f, 0.40f) }, // Green
+            new MatchableTypeData { color = new Color(0.95f, 0.85f, 0.20f) }, // Yellow
+            new MatchableTypeData { color = new Color(0.75f, 0.35f, 0.85f) }, // Purple
         };
 
         [Header("Board Layout")]
@@ -52,22 +67,33 @@ namespace TapMatch.Runtime.Config
         public float FallDuration => fallDuration;
         public float RemoveDuration => removeDuration;
 
-        private void OnValidate()
-        {
-            if (matchableColors != null && matchableColors.Length != colorCount)
-            {
-                Debug.LogWarning(
-                    $"GameConfig: matchableColors length ({matchableColors.Length}) " +
-                    $"doesn't match colorCount ({colorCount}). They should be equal.");
-            }
-        }
-
         public Color GetColor(int colorId)
         {
-            if (colorId < 0 || colorId >= matchableColors.Length)
+            if (colorId < 0 || colorId >= matchableTypes.Length)
                 return Color.white;
 
-            return matchableColors[colorId];
+            return matchableTypes[colorId].color;
+        }
+
+        /// <summary>
+        /// Returns the sprite for a matchable type, or null if none is assigned.
+        /// </summary>
+        public Sprite GetSprite(int colorId)
+        {
+            if (colorId < 0 || colorId >= matchableTypes.Length)
+                return null;
+
+            return matchableTypes[colorId].sprite;
+        }
+
+        private void OnValidate()
+        {
+            if (matchableTypes != null && matchableTypes.Length != colorCount)
+            {
+                Debug.LogWarning(
+                    $"GameConfig: matchableTypes length ({matchableTypes.Length}) " +
+                    $"doesn't match colorCount ({colorCount}). They should be equal.");
+            }
         }
     }
 }
