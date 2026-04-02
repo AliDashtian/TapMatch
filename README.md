@@ -31,6 +31,7 @@ Assets/Scripts/Input/                      Input handling
 - **VContainer** for dependency injection
 - **Addressables** for asset loading
 - **Unity 6 Awaitable** for async animations
+- **Unity ObjectPool** for recycling matchable GameObjects (zero GC from spawn/destroy)
 - **37 unit tests** covering all core logic with deterministic randomness
 
 See [ARCHITECTURE.md](ARCHITECTURE.md) for detailed design decisions, trade-offs, and rationale.
