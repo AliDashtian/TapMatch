@@ -57,7 +57,7 @@ namespace TapMatch.Runtime.Board
             var view = _pool.Get();
             var worldPos = GridToWorldPosition(row, col);
             view.transform.position = worldPos;
-            view.Setup(row, col, colorId, _config.GetColor(colorId));
+            view.Setup(row, col, colorId, _config.GetColor(colorId), _config.GetSprite(colorId));
             _matchables[(row, col)] = view;
         }
 
@@ -108,7 +108,7 @@ namespace TapMatch.Runtime.Board
 
                 var view = _pool.Get();
                 view.transform.position = spawnPos;
-                view.Setup(row, col, colorId, _config.GetColor(colorId));
+                view.Setup(row, col, colorId, _config.GetColor(colorId), _config.GetSprite(colorId));
                 _matchables[(row, col)] = view;
 
                 tasks.Add(AnimateMoveTo(view, targetPos, ct));

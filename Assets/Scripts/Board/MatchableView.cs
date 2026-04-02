@@ -12,6 +12,7 @@ namespace TapMatch.Runtime.Board
     {
         private SpriteRenderer _spriteRenderer;
         private Vector3 _originalScale;
+        private Sprite _defaultSprite;
         private int _colorId;
 
         public int ColorId => _colorId;
@@ -22,17 +23,19 @@ namespace TapMatch.Runtime.Board
         {
             _spriteRenderer = GetComponent<SpriteRenderer>();
             _originalScale = transform.localScale;
+            _defaultSprite = _spriteRenderer.sprite;
         }
 
         /// <summary>
         /// Initializes the matchable with its grid position and color.
         /// </summary>
-        public void Setup(int row, int col, int colorId, Color color)
+        public void Setup(int row, int col, int colorId, Color color, Sprite sprite = null)
         {
             Row = row;
             Col = col;
             _colorId = colorId;
             _spriteRenderer.color = color;
+            _spriteRenderer.sprite = sprite != null ? sprite : _defaultSprite;
         }
 
         /// <summary>
@@ -52,6 +55,7 @@ namespace TapMatch.Runtime.Board
         public void ResetForPool()
         {
             transform.localScale = _originalScale;
+            _spriteRenderer.sprite = _defaultSprite;
             gameObject.SetActive(false);
         }
 
