@@ -38,6 +38,9 @@ namespace TapMatch.Runtime.Board
 
         public void SpawnMatchable(int row, int col, int colorId)
         {
+            Debug.Assert(_matchablePrefab != null,
+                "BoardView: _matchablePrefab is null. Was LoadAssetsAsync() called?");
+
             var worldPos = GridToWorldPosition(row, col);
             var go = Instantiate(_matchablePrefab, worldPos, Quaternion.identity, transform);
             var view = go.GetComponent<MatchableView>();
@@ -145,19 +148,23 @@ namespace TapMatch.Runtime.Board
             float duration = _config.RemoveDuration;
             var t = view.transform;
 
-            while (elapsed < duration)
+            try
             {
-                ct.ThrowIfCancellationRequested();
-
-                elapsed += Time.deltaTime;
-                float progress = Mathf.Clamp01(elapsed / duration);
-                float scale = 1f - progress;
-                t.localScale = new Vector3(scale, scale, scale);
-
-                await Awaitable.NextFrameAsync(ct);
+                while (elapsed < duration)
+                {
+                    ct.ThrowIfCancellationRequested();
+                    elapsed += Time.deltaTime;
+                    float progress = Mathf.Clamp01(elapsed / duration);
+                    float scale = 1f - progress;
+                    t.localScale = new Vector3(scale, scale, scale);
+                    await Awaitable.NextFrameAsync(ct);
+                }
             }
-
-            Destroy(view.gameObject);
+            finally
+            {
+                if (view != null)
+                    Destroy(view.gameObject);
+            }
         }
 
         private async Task AnimateMoveTo(MatchableView view, Vector3 target, CancellationToken ct)
@@ -167,20 +174,23 @@ namespace TapMatch.Runtime.Board
             var t = view.transform;
             var start = t.position;
 
-            while (elapsed < duration)
+            try
             {
-                ct.ThrowIfCancellationRequested();
-
-                elapsed += Time.deltaTime;
-                float progress = Mathf.Clamp01(elapsed / duration);
-                // Ease-out quadratic for a natural fall feel
-                float eased = 1f - (1f - progress) * (1f - progress);
-                t.position = Vector3.Lerp(start, target, eased);
-
-                await Awaitable.NextFrameAsync(ct);
+                while (elapsed < duration)
+                {
+                    ct.ThrowIfCancellationRequested();
+                    elapsed += Time.deltaTime;
+                    float progress = Mathf.Clamp01(elapsed / duration);
+                    float eased = 1f - (1f - progress) * (1f - progress);
+                    t.position = Vector3.Lerp(start, target, eased);
+                    await Awaitable.NextFrameAsync(ct);
+                }
             }
-
-            t.position = target;
+            finally
+            {
+                if (view != null)
+                    t.position = target;
+            }
         }
     }
 }
