@@ -6,14 +6,16 @@ using TapMatch.Runtime.Board;
 using TapMatch.Runtime.Config;
 using UnityEngine;
 using UnityEngine.AddressableAssets;
+using UnityEngine.Pool;
 using VContainer;
 
 namespace TapMatch.Runtime.Board
 {
     /// <summary>
     /// Manages the visual representation of the game board.
-    /// Spawns, animates, and destroys matchable GameObjects based on
-    /// instructions from the BoardPresenter.
+    /// Uses Unity's ObjectPool to recycle matchable GameObjects instead of
+    /// constantly instantiating and destroying them — reduces GC pressure
+    /// and improves performance, especially on mobile.
     /// </summary>
     public sealed class BoardView : MonoBehaviour, IBoardView
     {
@@ -21,6 +23,7 @@ namespace TapMatch.Runtime.Board
 
         private GameConfig _config;
         private GameObject _matchablePrefab;
+        private ObjectPool<MatchableView> _pool;
         private readonly Dictionary<(int Row, int Col), MatchableView> _matchables = new();
 
         [Inject]
@@ -34,6 +37,16 @@ namespace TapMatch.Runtime.Board
             var handle = matchablePrefabRef.LoadAssetAsync<GameObject>();
             await handle.Task;
             _matchablePrefab = handle.Result;
+
+            _pool = new ObjectPool<MatchableView>(
+                createFunc: CreatePooledMatchable,
+                actionOnGet: OnGetFromPool,
+                actionOnRelease: OnReleaseToPool,
+                actionOnDestroy: OnDestroyPooled,
+                collectionCheck: false,
+                defaultCapacity: _config.Rows * _config.Columns,
+                maxSize: _config.Rows * _config.Columns * 2
+            );
         }
 
         public void SpawnMatchable(int row, int col, int colorId)
@@ -41,9 +54,9 @@ namespace TapMatch.Runtime.Board
             Debug.Assert(_matchablePrefab != null,
                 "BoardView: _matchablePrefab is null. Was LoadAssetsAsync() called?");
 
+            var view = _pool.Get();
             var worldPos = GridToWorldPosition(row, col);
-            var go = Instantiate(_matchablePrefab, worldPos, Quaternion.identity, transform);
-            var view = go.GetComponent<MatchableView>();
+            view.transform.position = worldPos;
             view.Setup(row, col, colorId, _config.GetColor(colorId));
             _matchables[(row, col)] = view;
         }
@@ -57,7 +70,7 @@ namespace TapMatch.Runtime.Board
                 if (_matchables.TryGetValue((row, col), out var view))
                 {
                     _matchables.Remove((row, col));
-                    tasks.Add(AnimateScaleDown(view, ct));
+                    tasks.Add(AnimateScaleDownAndRelease(view, ct));
                 }
             }
 
@@ -90,12 +103,11 @@ namespace TapMatch.Runtime.Board
 
             foreach (var (row, col, colorId) in result.Spawned)
             {
-                // Spawn above the board and animate falling in
                 var spawnPos = GridToWorldPosition(-1, col);
                 var targetPos = GridToWorldPosition(row, col);
 
-                var go = Instantiate(_matchablePrefab, spawnPos, Quaternion.identity, transform);
-                var view = go.GetComponent<MatchableView>();
+                var view = _pool.Get();
+                view.transform.position = spawnPos;
                 view.Setup(row, col, colorId, _config.GetColor(colorId));
                 _matchables[(row, col)] = view;
 
@@ -110,20 +122,10 @@ namespace TapMatch.Runtime.Board
             foreach (var view in _matchables.Values)
             {
                 if (view != null)
-                    Destroy(view.gameObject);
+                    _pool.Release(view);
             }
 
             _matchables.Clear();
-        }
-
-        /// <summary>
-        /// Returns the MatchableView at the given grid position, or null.
-        /// Used by the input handler to detect taps.
-        /// </summary>
-        public MatchableView GetMatchableAt(int row, int col)
-        {
-            _matchables.TryGetValue((row, col), out var view);
-            return view;
         }
 
         /// <summary>
@@ -142,7 +144,40 @@ namespace TapMatch.Runtime.Board
             return new Vector3(x, y, 0f);
         }
 
-        private async Task AnimateScaleDown(MatchableView view, CancellationToken ct)
+        private void OnDestroy()
+        {
+            _pool?.Dispose();
+        }
+
+        #region Object Pool Callbacks
+
+        private MatchableView CreatePooledMatchable()
+        {
+            var go = Instantiate(_matchablePrefab, transform);
+            return go.GetComponent<MatchableView>();
+        }
+
+        private void OnGetFromPool(MatchableView view)
+        {
+            view.ActivateFromPool();
+        }
+
+        private void OnReleaseToPool(MatchableView view)
+        {
+            view.ResetForPool();
+        }
+
+        private void OnDestroyPooled(MatchableView view)
+        {
+            if (view != null)
+                Destroy(view.gameObject);
+        }
+
+        #endregion
+
+        #region Animations
+
+        private async Task AnimateScaleDownAndRelease(MatchableView view, CancellationToken ct)
         {
             float elapsed = 0f;
             float duration = _config.RemoveDuration;
@@ -162,8 +197,9 @@ namespace TapMatch.Runtime.Board
             }
             finally
             {
+                // Always return to pool, even if cancelled mid-animation
                 if (view != null)
-                    Destroy(view.gameObject);
+                    _pool.Release(view);
             }
         }
 
@@ -181,6 +217,7 @@ namespace TapMatch.Runtime.Board
                     ct.ThrowIfCancellationRequested();
                     elapsed += Time.deltaTime;
                     float progress = Mathf.Clamp01(elapsed / duration);
+                    // Ease-out quadratic for a natural fall feel
                     float eased = 1f - (1f - progress) * (1f - progress);
                     t.position = Vector3.Lerp(start, target, eased);
                     await Awaitable.NextFrameAsync(ct);
@@ -188,9 +225,12 @@ namespace TapMatch.Runtime.Board
             }
             finally
             {
+                // Snap to exact position even if cancelled
                 if (view != null)
                     t.position = target;
             }
         }
+
+        #endregion
     }
 }

@@ -5,11 +5,13 @@ namespace TapMatch.Runtime.Board
     /// <summary>
     /// Visual representation of a single matchable tile on the board.
     /// Responsible only for its own appearance — no game logic.
+    /// Supports object pooling via ResetForPool().
     /// </summary>
     [RequireComponent(typeof(SpriteRenderer))]
     public sealed class MatchableView : MonoBehaviour
     {
         private SpriteRenderer _spriteRenderer;
+        private Vector3 _originalScale;
         private int _colorId;
 
         public int ColorId => _colorId;
@@ -19,6 +21,7 @@ namespace TapMatch.Runtime.Board
         private void Awake()
         {
             _spriteRenderer = GetComponent<SpriteRenderer>();
+            _originalScale = transform.localScale;
         }
 
         /// <summary>
@@ -40,6 +43,24 @@ namespace TapMatch.Runtime.Board
         {
             Row = newRow;
             Col = newCol;
+        }
+
+        /// <summary>
+        /// Resets the matchable to a clean state for object pool reuse.
+        /// Called when the object is returned to the pool.
+        /// </summary>
+        public void ResetForPool()
+        {
+            transform.localScale = _originalScale;
+            gameObject.SetActive(false);
+        }
+
+        /// <summary>
+        /// Activates the matchable when taken from the pool.
+        /// </summary>
+        public void ActivateFromPool()
+        {
+            gameObject.SetActive(true);
         }
     }
 }

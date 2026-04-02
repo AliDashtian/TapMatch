@@ -166,7 +166,7 @@ Includes `OnValidate()` to warn if `matchableColors` array length doesn't match 
 
 Several defensive measures were added during a self-review pass:
 
-- **Animation cancellation safety**: All animation loops (`AnimateScaleDown`, `AnimateMoveTo`) use `try/finally` to guarantee cleanup. If a `CancellationToken` fires mid-animation (e.g., scene unload), `Destroy()` still runs and positions still snap to their target. Without this, cancelled animations would leak GameObjects or leave tiles frozen mid-fall.
+- **Animation cancellation safety**: All animation loops (`AnimateScaleDownAndRelease`, `AnimateMoveTo`) use `try/finally` to guarantee cleanup. If a `CancellationToken` fires mid-animation (e.g., scene unload), tiles are still returned to the pool and positions still snap to their target. Without this, cancelled animations would leak GameObjects or leave tiles frozen mid-fall.
 
 - **Null assertion in SpawnMatchable**: `Debug.Assert` checks that the Addressable prefab was loaded before spawning. Catches initialization ordering bugs with a clear message instead of a cryptic NullReferenceException.
 
@@ -195,6 +195,23 @@ All core classes are tested with plain NUnit in the embedded package's `Tests/Ed
 
 ---
 
+## Object Pooling
+
+`BoardView` uses Unity's built-in `ObjectPool<MatchableView>` (from `UnityEngine.Pool`) to recycle matchable GameObjects instead of instantiating and destroying them on every tap.
+
+**How it works:**
+- Pool is created after the Addressable prefab is loaded, pre-sized to `Rows × Columns`
+- `SpawnMatchable()` and `AnimateSpawnsAsync()` call `_pool.Get()` instead of `Instantiate()`
+- `AnimateScaleDownAndRelease()` calls `_pool.Release()` instead of `Destroy()`
+- `MatchableView.ResetForPool()` resets scale to `Vector3.one` and deactivates the GameObject
+- `MatchableView.ActivateFromPool()` re-activates it when taken from the pool
+
+**Why?** In a match game, tiles are constantly created and destroyed. Each `Instantiate()`/`Destroy()` cycle allocates and deallocates memory, which triggers garbage collection spikes — especially noticeable on mobile. Object pooling reuses existing GameObjects, reducing GC pressure and improving frame consistency.
+
+**Trade-off:** Slightly more complex code (pool callbacks, reset logic), but the performance benefit is significant for a game that may run indefinitely.
+
+---
+
 ## Technology Choices
 
 | Technology | Purpose | Rationale |
@@ -204,6 +221,7 @@ All core classes are tested with plain NUnit in the embedded package's `Tests/Ed
 | **Addressables** | Asset loading | Matchable prefab loaded via AssetReference — decouples prefab from scene |
 | **Input System** | Input handling | Modern Unity input, supports both mouse and touch |
 | **Unity Awaitable** | Async animations | Built-in Unity 6 feature, no third-party dependency (replaces UniTask) |
+| **ObjectPool** | Object recycling | Unity's built-in pool reduces GC pressure from frequent spawn/destroy cycles |
 | **Embedded Package** | Code organization | Enforces architecture boundaries at assembly level |
 
 ---
